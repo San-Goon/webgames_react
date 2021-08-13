@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+import React, {useRef, useState, useEffect, useMemo, useCallback} from 'react'
 import Ball from './ball'
 
 function getWinNumbers() {
@@ -14,17 +14,44 @@ function getWinNumbers() {
   return [...winNumbers, bonusNumber]
 }
 
-class Lotto extends Component {
-  state = {
-    winNumbers: getWinNumbers(),
-    wunBalls: [],
-    bonus: null,
-    redo: false,
-  }
-  
-  render() {
-    const {winBalls,bonus,redo} = this.state
-    return (
+const Lotto = () => {
+  const lottoNumbers = useMemo(() => getWinNumbers(), [])
+  const [winNumbers, setWinNumbers] = useState(lottoNumbers)
+  const [winBalls, setWinBalls] = useState([])
+  const [bonus, setBonus] = useState();
+  const [redo, setRedo] = useState(false)
+  const timeouts = useRef([])
+
+  useEffect(() => {
+    for (let i =0; i<winNumbers.length -1; i++) {
+      timeouts.current[i] = setTimeout(() => {
+        setWinBalls((prevwinBalls)=> {
+          return [...prevwinBalls, winNumbers[i]]
+        })
+      
+    }, (i+1) * 1000)
+    }
+    setTimeout(()=> {
+      timeouts.current[6] = 
+      setBonus(winNumbers[6])
+      setRedo(true)
+    }, 7000)
+    return () => {
+      timeouts.current.forEach((v)=>{
+        clearTimeout(v)
+      })
+    }
+  }, [timeouts.current]) // 빈 배열이면 componentDidMount와 동일
+// 배열에 요소가 있으면 componentDidMount와 componentDidUpdate 둘 다 수행
+ const onClickRedo = useCallback(() => {
+   setWinNumbers(getWinNumbers())
+   setWinBalls([])
+   setBonus(null)
+   setRedo(false)
+   timeouts.current = []
+  },[winNumbers])
+
+  return (
     <>
     <div>당첨숫자</div>
     <div id='결과창'>
@@ -32,10 +59,9 @@ class Lotto extends Component {
     </div>
     <div>보너스공</div>
     {bonus && <Ball number={bonus} />}
-    <button onClick={redo ? this.onClickRedo : () => {}}>한 번 더?</button>
+    {redo && <button onClick={onClickRedo}>한 번 더?</button> }
     </>  
-    )
-  }
+  )
 }
 
 export default Lotto
