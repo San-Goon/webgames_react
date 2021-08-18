@@ -1,4 +1,3 @@
-
 import React, { useReducer, createContext, useMemo, useEffect } from "react";
 import Table from "./Table";
 import Form from "./Form";
@@ -16,8 +15,8 @@ export const CODE = {
 
 export const TableContext = createContext({
   tableData: [],
-  dispatch: () => {},
   halted: true,
+  dispatch: () => {},
 });
 
 const initialState = {
@@ -30,21 +29,16 @@ const initialState = {
   timer: 0,
   result: "",
   halted: true,
-  openedCount : 0 ,
+  openedCount : 0,
 };
 
 const plantMine = (row, cell, mine) => {
-  const candidate = Array(row * cell)
-    .fill()
-    .map((arr, i) => {
+  const candidate = Array(row * cell).fill().map((arr, i) => {
       return i;
     });
   const shuffle = [];
   while (candidate.length > row * cell - mine) {
-    const chosen = candidate.splice(
-      Math.floor(Math.random() * candidate.length),
-      1
-    )[0];
+    const chosen = candidate.splice(Math.floor(Math.random() * candidate.length),1)[0];
     shuffle.push(chosen);
   }
   const data = [];
@@ -61,6 +55,7 @@ const plantMine = (row, cell, mine) => {
     const hor = shuffle[k] % cell;
     data[ver][hor] = CODE.MINE;
   }
+
   return data;
 };
 
@@ -77,97 +72,87 @@ const reducer = (state, action) => {
     case START_GAME:
       return {
         ...state,
-        data: { row: action.row, cell : action.cell, mine: action.mine},
+        data: {
+          row: action.row,
+          cell: action.cell,
+          mine: action.mine
+        },
+        openedCount: 0,
         tableData: plantMine(action.row, action.cell, action.mine),
         halted: false,
-        openedCount: 0,
-        tumer: 0,
+        timer: 0,
       };
-    case OPEN_CELL:
+    case OPEN_CELL: {
       const tableData = [...state.tableData];
-      tableData.forEach((row,i) => {
-        tableData[i] = [...row]
-      })
-      const checked = []
+      tableData.forEach((row, i) => {
+        tableData[i] = [...row];
+      });
+      const checked = [];
       let openedCount = 0;
       const checkAround = (row,cell) => {
-        if([CODE.OPENED, CODE.FLAG_MINE, CODE.FLAG, CODE.QUESTION_MINE, CODE.QUESTION].includes(tableData[row][cell]))
-        {
+        if (row < 0 || row >= tableData.length || cell < 0 || cell >= tableData[0].length) {
           return;
         }
-        if (row<0 || row>= tableData.length || cell<0 || cell>=tableData[0].length) {
+        if([CODE.OPENED, CODE.FLAG, CODE.FLAG_MINE, CODE.QUESTION_MINE, CODE.QUESTION].includes(tableData[row][cell])) {
           return;
         }
-        if (checked.includes(row+ ',' + cell)) {
+        if (checked.includes(row+ '/' + cell)) {
           return;
+        } else {
+          checked.push(row + '/' + cell);
         }
-        else {
-          checked.push(row + ',' + cell)
-        }
-        
-        let around = [tableData[row][cell-1], tableData[row][cell+1]];
+        let around = [
+          tableData[row][cell-1], tableData[row][cell+1],
+        ];
       if (tableData[row - 1]) {
-        around = around.concat(
-          tableData[row - 1][cell - 1],
-          tableData[row - 1][cell],
-          tableData[row - 1][cell + 1]
-        );
+        around = around.concat([tableData[row - 1][cell - 1], tableData[row - 1][cell], tableData[row - 1][cell + 1]]);
       }
-      ;
       if (tableData[row + 1]) {
-        around = around.concat(
-          tableData[row + 1][cell - 1],
-          tableData[row + 1][cell],
-          tableData[row + 1][cell + 1]
-        );
+        around = around.concat([tableData[row + 1][cell - 1], tableData[row + 1][cell], tableData[row + 1][cell + 1]]);
       }
-
-      const count = around.filter(
-        (v) =>
-          [CODE.MINE, CODE.FLAG_MINE, CODE.QUESTION_MINE].includes(v)).length
-     
+      const count = around.filter((v) => [CODE.MINE, CODE.FLAG_MINE, CODE.QUESTION_MINE].includes(v)).length;
       if (count === 0) {
         if ( row > -1) {
-        const near = []
+        const near = [];
         if (row - 1 > -1) {
-          near.push([row -1,cell-1])
-          near.push([row -1,cell])
-          near.push([row -1,cell+1])
+          near.push([row - 1, cell - 1]);
+          near.push([row - 1, cell]);
+          near.push([row - 1, cell + 1]);
         }
-        near.push([row ,cell -1])
-          near.push([row,cell+1])
-        if (row - 1 > tableData.length) {
-          near.push([row +1,cell-1])
-          near.push([row +1,cell])
-          near.push([row +1,cell+1])
+        near.push([row, cell - 1]);
+        near.push([row, cell + 1]);
+        if (row + 1 < tableData.length) {
+          near.push([row + 1,cell - 1]);
+          near.push([row + 1,cell]);
+          near.push([row + 1,cell + 1]);
         }
         near.forEach((n) => {
           if (tableData[n[0]][n[1]] !== CODE.OPENED) {
-            checkAround(n[0],n[1])
-          }
-          
+            checkAround(n[0], n[1]);
+          }    
         })
       }
+    }
       if (tableData[row][cell] === CODE.NORMAL) {
         openedCount += 1;
       }
       tableData[row][cell] = count;
-      } checkAround(action.row, action.cell)
+      };
+      checkAround(action.row, action.cell)
       let halted = false;
-      
-      if (state.data.row*state.data.cell-state.data.mine === state.openedCount+ openedcount) {
-        halted = true
-        result : `${state.timer}초만에 승리!`
+      let result = '';
+      if (state.data.row*state.data.cell-state.data.mine === state.openedCount+ openedCount) {
+        halted = true;
+        result = `${state.timer}초만에 승리!`;
       }
       return {
         ...state,
         tableData,
-        openedCount : state.openedCount + openedcount,
+        openedCount : state.openedCount + openedCount,
         halted,
-        result
-      }
-      }
-      
+        result,
+      };
+    }
     case CLICK_MINE: {
       const tableData = [...state.tableData];
       tableData[action.row] = [...state.tableData[action.row]];
@@ -247,7 +232,7 @@ const MineSearch = () => {
     return () => {
       clearInterval(timer)
     }
-  },[])
+  },[halted])
 
   return (
     <TableContext.Provider value={value}>
